@@ -136,6 +136,19 @@ packetimpact_go_test(
 )
 
 packetimpact_go_test(
+    name = "tcp_timestamp",
+    srcs = ["tcp_timestamp_test.go"],
+    # TODO(b/156682000): Fix netstack then remove the line below.
+    netstack = False,
+    deps = [
+        "//pkg/tcpip/header",
+        "//pkg/tcpip/seqnum",
+        "//test/packetimpact/testbench",
+        "@org_golang_x_sys//unix:go_default_library",
+    ],
+)
+
+packetimpact_go_test(
     name = "tcp_user_timeout",
     srcs = ["tcp_user_timeout_test.go"],
     deps = [

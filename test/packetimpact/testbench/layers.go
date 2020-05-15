@@ -689,6 +689,7 @@ type TCP struct {
 	WindowSize    *uint16
 	Checksum      *uint16
 	UrgentPointer *uint16
+	Options       []byte
 }
 
 func (l *TCP) String() string {
@@ -697,7 +698,7 @@ func (l *TCP) String() string {
 
 // ToBytes implements Layer.ToBytes.
 func (l *TCP) ToBytes() ([]byte, error) {
-	b := make([]byte, header.TCPMinimumSize)
+	b := make([]byte, l.length())
 	h := header.TCP(b)
 	if l.SrcPort != nil {
 		h.SetSourcePort(*l.SrcPort)
@@ -727,6 +728,8 @@ func (l *TCP) ToBytes() ([]byte, error) {
 	if l.UrgentPointer != nil {
 		h.SetUrgentPoiner(*l.UrgentPointer)
 	}
+	copy(b[header.TCPMinimumSize:], l.Options)
+	header.AddTCPOptionPadding(b[header.TCPMinimumSize:], len(l.Options))
 	if l.Checksum != nil {
 		h.SetChecksum(*l.Checksum)
 		return h, nil
@@ -811,6 +814,7 @@ func parseTCP(b []byte) (Layer, layerParser) {
 		WindowSize:    Uint16(h.WindowSize()),
 		Checksum:      Uint16(h.Checksum()),
 		UrgentPointer: Uint16(h.UrgentPointer()),
+		Options:       b[header.TCPMinimumSize:h.DataOffset()],
 	}
 	return &tcp, parsePayload
 }
@@ -821,7 +825,8 @@ func (l *TCP) match(other Layer) bool {
 
 func (l *TCP) length() int {
 	if l.DataOffset == nil {
-		return header.TCPMinimumSize
+		optlen := (len(l.Options) + 3) / 4 * 4
+		return header.TCPMinimumSize + optlen
 	}
 	return int(*l.DataOffset)
 }

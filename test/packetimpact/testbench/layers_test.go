@@ -15,10 +15,14 @@
 package testbench
 
 import (
+	"bytes"
+	"encoding/hex"
+	"net"
 	"testing"
 
 	"github.com/mohae/deepcopy"
 	"gvisor.dev/gvisor/pkg/tcpip"
+	"gvisor.dev/gvisor/pkg/tcpip/header"
 )
 
 func TestLayerMatch(t *testing.T) {
@@ -390,6 +394,90 @@ func TestLayersDiff(t *testing.T) {
 		}
 		if tt.y.match(tt.x) != (tt.y.diff(tt.x) == "") {
 			t.Errorf("match and diff of %s and %s disagree", tt.y, tt.x)
+		}
+	}
+}
+
+func TestTCPOptions(t *testing.T) {
+	for _, tt := range []struct {
+		packet     string
+		wantLayers Layers
+	}{
+		{
+			packet: "4500002c000100004006f977c0a80002c0a800013039d431000000000000000060022000f51c000003030200",
+			wantLayers: []Layer{
+				&IPv4{
+					IHL:            Uint8(20),
+					TOS:            Uint8(0),
+					TotalLength:    Uint16(44),
+					ID:             Uint16(1),
+					Flags:          Uint8(0),
+					FragmentOffset: Uint16(0),
+					TTL:            Uint8(64),
+					Protocol:       Uint8(uint8(header.TCPProtocolNumber)),
+					Checksum:       Uint16(0xf977),
+					SrcAddr:        Address(tcpip.Address(net.ParseIP("192.168.0.2").To4())),
+					DstAddr:        Address(tcpip.Address(net.ParseIP("192.168.0.1").To4())),
+				},
+				&TCP{
+					SrcPort:       Uint16(12345),
+					DstPort:       Uint16(54321),
+					SeqNum:        Uint32(0),
+					AckNum:        Uint32(0),
+					Flags:         Uint8(header.TCPFlagSyn),
+					WindowSize:    Uint16(8192),
+					Checksum:      Uint16(0xf51c),
+					UrgentPointer: Uint16(0),
+					Options:       []byte{3, 3, 2, 0},
+				},
+				&Payload{Bytes: nil},
+			},
+		},
+		{
+			packet: "45000037000100004006f96cc0a80002c0a800013039d431000000000000000060022000e52100000303020053616d706c652044617461",
+			wantLayers: []Layer{
+				&IPv4{
+					IHL:            Uint8(20),
+					TOS:            Uint8(0),
+					TotalLength:    Uint16(55),
+					ID:             Uint16(1),
+					Flags:          Uint8(0),
+					FragmentOffset: Uint16(0),
+					TTL:            Uint8(64),
+					Protocol:       Uint8(uint8(header.TCPProtocolNumber)),
+					Checksum:       Uint16(0xf96c),
+					SrcAddr:        Address(tcpip.Address(net.ParseIP("192.168.0.2").To4())),
+					DstAddr:        Address(tcpip.Address(net.ParseIP("192.168.0.1").To4())),
+				},
+				&TCP{
+					SrcPort:       Uint16(12345),
+					DstPort:       Uint16(54321),
+					SeqNum:        Uint32(0),
+					AckNum:        Uint32(0),
+					Flags:         Uint8(header.TCPFlagSyn),
+					WindowSize:    Uint16(8192),
+					Checksum:      Uint16(0xe521),
+					UrgentPointer: Uint16(0),
+					Options:       []byte{3, 3, 2, 0},
+				},
+				&Payload{Bytes: []byte("Sample Data")},
+			},
+		},
+	} {
+		wantBytes, err := hex.DecodeString(tt.packet)
+		if err != nil {
+			t.Fatalf("failed decoding: %s", err)
+		}
+		layers := parse(parseIPv4, wantBytes)
+		if !layers.match(tt.wantLayers) {
+			t.Fatalf("gotLayers: %s, wantLayers: %s", &layers, &tt.wantLayers)
+		}
+		gotBytes, err := layers.ToBytes()
+		if err != nil {
+			t.Fatalf("failed to serialize: %s", err)
+		}
+		if !bytes.Equal(wantBytes, gotBytes) {
+			t.Fatalf("gotBytes: %x, wantBytes: %x", gotBytes, wantBytes)
 		}
 	}
 }
