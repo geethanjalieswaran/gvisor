@@ -22,6 +22,7 @@ go_library(
         "//pkg/sentry/mm",
         "//pkg/sentry/pgalloc",
         "//pkg/sentry/vfs",
+        "//pkg/sentry/vfs/lock",
         "//pkg/syserror",
         "//pkg/usermem",
     ],

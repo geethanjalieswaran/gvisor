@@ -17,6 +17,7 @@ package memdev
 import (
 	"gvisor.dev/gvisor/pkg/context"
 	"gvisor.dev/gvisor/pkg/sentry/vfs"
+	"gvisor.dev/gvisor/pkg/sentry/vfs/lock"
 	"gvisor.dev/gvisor/pkg/syserror"
 	"gvisor.dev/gvisor/pkg/usermem"
 )
@@ -24,11 +25,14 @@ import (
 const fullDevMinor = 7
 
 // fullDevice implements vfs.Device for /dev/full.
-type fullDevice struct{}
+type fullDevice struct {
+	locks lock.FileLocks
+}
 
 // Open implements vfs.Device.Open.
-func (fullDevice) Open(ctx context.Context, mnt *vfs.Mount, vfsd *vfs.Dentry, opts vfs.OpenOptions) (*vfs.FileDescription, error) {
+func (d *fullDevice) Open(ctx context.Context, mnt *vfs.Mount, vfsd *vfs.Dentry, opts vfs.OpenOptions) (*vfs.FileDescription, error) {
 	fd := &fullFD{}
+	fd.LockFD.Init(&d.locks)
 	if err := fd.vfsfd.Init(fd, opts.Flags, mnt, vfsd, &vfs.FileDescriptionOptions{
 		UseDentryMetadata: true,
 	}); err != nil {
@@ -42,6 +46,7 @@ type fullFD struct {
 	vfsfd vfs.FileDescription
 	vfs.FileDescriptionDefaultImpl
 	vfs.DentryMetadataFileDescriptionImpl
+	vfs.LockFD
 }
 
 // Release implements vfs.FileDescriptionImpl.Release.

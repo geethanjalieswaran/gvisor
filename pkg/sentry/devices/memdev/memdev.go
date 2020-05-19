@@ -26,11 +26,11 @@ import (
 // Register registers all devices implemented by this package in vfsObj.
 func Register(vfsObj *vfs.VirtualFilesystem) error {
 	for minor, dev := range map[uint32]vfs.Device{
-		nullDevMinor:    nullDevice{},
-		zeroDevMinor:    zeroDevice{},
-		fullDevMinor:    fullDevice{},
-		randomDevMinor:  randomDevice{},
-		urandomDevMinor: randomDevice{},
+		nullDevMinor:    &nullDevice{},
+		zeroDevMinor:    &zeroDevice{},
+		fullDevMinor:    &fullDevice{},
+		randomDevMinor:  &randomDevice{},
+		urandomDevMinor: &randomDevice{},
 	} {
 		if err := vfsObj.RegisterDevice(vfs.CharDevice, linux.MEM_MAJOR, minor, dev, &vfs.RegisterDeviceOptions{
 			GroupName: "mem",

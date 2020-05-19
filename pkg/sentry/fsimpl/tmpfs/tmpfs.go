@@ -35,7 +35,6 @@ import (
 
 	"gvisor.dev/gvisor/pkg/abi/linux"
 	"gvisor.dev/gvisor/pkg/context"
-	fslock "gvisor.dev/gvisor/pkg/sentry/fs/lock"
 	"gvisor.dev/gvisor/pkg/sentry/kernel/auth"
 	"gvisor.dev/gvisor/pkg/sentry/kernel/time"
 	"gvisor.dev/gvisor/pkg/sentry/pgalloc"
@@ -235,7 +234,6 @@ type inode struct {
 	ctime int64 // nanoseconds
 	mtime int64 // nanoseconds
 
-	// Advisory file locks, which lock at the inode level.
 	locks lock.FileLocks
 
 	impl interface{} // immutable
@@ -455,44 +453,6 @@ func (i *inode) setStat(ctx context.Context, creds *auth.Credentials, stat *linu
 	return nil
 }
 
-// TODO(gvisor.dev/issue/1480): support file locking for file types other than regular.
-func (i *inode) lockBSD(uid fslock.UniqueID, t fslock.LockType, block fslock.Blocker) error {
-	switch i.impl.(type) {
-	case *regularFile:
-		return i.locks.LockBSD(uid, t, block)
-	}
-	return syserror.EBADF
-}
-
-// TODO(gvisor.dev/issue/1480): support file locking for file types other than regular.
-func (i *inode) unlockBSD(uid fslock.UniqueID) error {
-	switch i.impl.(type) {
-	case *regularFile:
-		i.locks.UnlockBSD(uid)
-		return nil
-	}
-	return syserror.EBADF
-}
-
-// TODO(gvisor.dev/issue/1480): support file locking for file types other than regular.
-func (i *inode) lockPOSIX(uid fslock.UniqueID, t fslock.LockType, rng fslock.LockRange, block fslock.Blocker) error {
-	switch i.impl.(type) {
-	case *regularFile:
-		return i.locks.LockPOSIX(uid, t, rng, block)
-	}
-	return syserror.EBADF
-}
-
-// TODO(gvisor.dev/issue/1480): support file locking for file types other than regular.
-func (i *inode) unlockPOSIX(uid fslock.UniqueID, rng fslock.LockRange) error {
-	switch i.impl.(type) {
-	case *regularFile:
-		i.locks.UnlockPOSIX(uid, rng)
-		return nil
-	}
-	return syserror.EBADF
-}
-
 // allocatedBlocksForSize returns the number of 512B blocks needed to
 // accommodate the given size in bytes, as appropriate for struct
 // stat::st_blocks and struct statx::stx_blocks. (Note that this 512B block
@@ -621,6 +581,7 @@ func (i *inode) userXattrSupported() bool {
 type fileDescription struct {
 	vfsfd vfs.FileDescription
 	vfs.FileDescriptionDefaultImpl
+	vfs.LockFD
 }
 
 func (fd *fileDescription) filesystem() *filesystem {

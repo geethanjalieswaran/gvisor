@@ -57,6 +57,8 @@ go_library(
         "//pkg/sentry/limits",
         "//pkg/sentry/memmap",
         "//pkg/sentry/socket/unix/transport",
+        "//pkg/sentry/uniqueid",
+        "//pkg/sentry/vfs/lock",
         "//pkg/sync",
         "//pkg/syserror",
         "//pkg/usermem",

@@ -21,6 +21,7 @@ import (
 	"gvisor.dev/gvisor/pkg/rand"
 	"gvisor.dev/gvisor/pkg/safemem"
 	"gvisor.dev/gvisor/pkg/sentry/vfs"
+	"gvisor.dev/gvisor/pkg/sentry/vfs/lock"
 	"gvisor.dev/gvisor/pkg/usermem"
 )
 
@@ -30,11 +31,14 @@ const (
 )
 
 // randomDevice implements vfs.Device for /dev/random and /dev/urandom.
-type randomDevice struct{}
+type randomDevice struct {
+	locks lock.FileLocks
+}
 
 // Open implements vfs.Device.Open.
-func (randomDevice) Open(ctx context.Context, mnt *vfs.Mount, vfsd *vfs.Dentry, opts vfs.OpenOptions) (*vfs.FileDescription, error) {
+func (d *randomDevice) Open(ctx context.Context, mnt *vfs.Mount, vfsd *vfs.Dentry, opts vfs.OpenOptions) (*vfs.FileDescription, error) {
 	fd := &randomFD{}
+	fd.LockFD.Init(&d.locks)
 	if err := fd.vfsfd.Init(fd, opts.Flags, mnt, vfsd, &vfs.FileDescriptionOptions{
 		UseDentryMetadata: true,
 	}); err != nil {
@@ -48,6 +52,7 @@ type randomFD struct {
 	vfsfd vfs.FileDescription
 	vfs.FileDescriptionDefaultImpl
 	vfs.DentryMetadataFileDescriptionImpl
+	vfs.LockFD
 
 	// off is the "file offset". off is accessed using atomic memory
 	// operations.

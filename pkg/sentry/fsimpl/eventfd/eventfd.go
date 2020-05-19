@@ -25,6 +25,7 @@ import (
 	"gvisor.dev/gvisor/pkg/fdnotifier"
 	"gvisor.dev/gvisor/pkg/log"
 	"gvisor.dev/gvisor/pkg/sentry/vfs"
+	"gvisor.dev/gvisor/pkg/sentry/vfs/lock"
 	"gvisor.dev/gvisor/pkg/syserror"
 	"gvisor.dev/gvisor/pkg/usermem"
 	"gvisor.dev/gvisor/pkg/waiter"
@@ -37,6 +38,7 @@ type EventFileDescription struct {
 	vfsfd vfs.FileDescription
 	vfs.FileDescriptionDefaultImpl
 	vfs.DentryMetadataFileDescriptionImpl
+	vfs.LockFD
 
 	// queue is used to notify interested parties when the event object
 	// becomes readable or writable.
@@ -66,6 +68,7 @@ func New(vfsObj *vfs.VirtualFilesystem, initVal uint64, semMode bool, flags uint
 		semMode: semMode,
 		hostfd:  -1,
 	}
+	efd.LockFD.Init(&lock.FileLocks{})
 	if err := efd.vfsfd.Init(efd, flags, vd.Mount(), vd.Dentry(), &vfs.FileDescriptionOptions{
 		UseDentryMetadata: true,
 		DenyPRead:         true,

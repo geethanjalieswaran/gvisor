@@ -20,17 +20,21 @@ import (
 	"gvisor.dev/gvisor/pkg/sentry/mm"
 	"gvisor.dev/gvisor/pkg/sentry/pgalloc"
 	"gvisor.dev/gvisor/pkg/sentry/vfs"
+	"gvisor.dev/gvisor/pkg/sentry/vfs/lock"
 	"gvisor.dev/gvisor/pkg/usermem"
 )
 
 const zeroDevMinor = 5
 
 // zeroDevice implements vfs.Device for /dev/zero.
-type zeroDevice struct{}
+type zeroDevice struct {
+	locks lock.FileLocks
+}
 
 // Open implements vfs.Device.Open.
-func (zeroDevice) Open(ctx context.Context, mnt *vfs.Mount, vfsd *vfs.Dentry, opts vfs.OpenOptions) (*vfs.FileDescription, error) {
+func (d *zeroDevice) Open(ctx context.Context, mnt *vfs.Mount, vfsd *vfs.Dentry, opts vfs.OpenOptions) (*vfs.FileDescription, error) {
 	fd := &zeroFD{}
+	fd.LockFD.Init(&d.locks)
 	if err := fd.vfsfd.Init(fd, opts.Flags, mnt, vfsd, &vfs.FileDescriptionOptions{
 		UseDentryMetadata: true,
 	}); err != nil {
@@ -44,6 +48,7 @@ type zeroFD struct {
 	vfsfd vfs.FileDescription
 	vfs.FileDescriptionDefaultImpl
 	vfs.DentryMetadataFileDescriptionImpl
+	vfs.LockFD
 }
 
 // Release implements vfs.FileDescriptionImpl.Release.

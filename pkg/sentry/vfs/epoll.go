@@ -17,6 +17,7 @@ package vfs
 import (
 	"gvisor.dev/gvisor/pkg/abi/linux"
 	"gvisor.dev/gvisor/pkg/context"
+	"gvisor.dev/gvisor/pkg/sentry/vfs/lock"
 	"gvisor.dev/gvisor/pkg/sync"
 	"gvisor.dev/gvisor/pkg/syserror"
 	"gvisor.dev/gvisor/pkg/waiter"
@@ -31,6 +32,7 @@ type EpollInstance struct {
 	vfsfd FileDescription
 	FileDescriptionDefaultImpl
 	DentryMetadataFileDescriptionImpl
+	LockFD
 
 	// q holds waiters on this EpollInstance.
 	q waiter.Queue
@@ -98,6 +100,7 @@ func (vfs *VirtualFilesystem) NewEpollInstanceFD() (*FileDescription, error) {
 	ep := &EpollInstance{
 		interest: make(map[epollInterestKey]*epollInterest),
 	}
+	ep.LockFD.Init(&lock.FileLocks{})
 	if err := ep.vfsfd.Init(ep, linux.O_RDWR, vd.Mount(), vd.Dentry(), &FileDescriptionOptions{
 		DenyPRead:         true,
 		DenyPWrite:        true,

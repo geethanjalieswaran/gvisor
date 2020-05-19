@@ -12,6 +12,7 @@ go_library(
         "//pkg/fdnotifier",
         "//pkg/log",
         "//pkg/sentry/vfs",
+        "//pkg/sentry/vfs/lock",
         "//pkg/syserror",
         "//pkg/usermem",
         "//pkg/waiter",

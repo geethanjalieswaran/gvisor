@@ -175,6 +175,10 @@ func (fd *FileDescription) DecRef() {
 			}
 			ep.interestMu.Unlock()
 		}
+
+		// Release any lock that it may have acquired.
+		fd.impl.UnlockBSD(context.Background(), fd)
+
 		// Release implementation resources.
 		fd.impl.Release()
 		if fd.writable {
@@ -415,13 +419,9 @@ type FileDescriptionImpl interface {
 	Removexattr(ctx context.Context, name string) error
 
 	// LockBSD tries to acquire a BSD-style advisory file lock.
-	//
-	// TODO(gvisor.dev/issue/1480): BSD-style file locking
 	LockBSD(ctx context.Context, uid lock.UniqueID, t lock.LockType, block lock.Blocker) error
 
-	// LockBSD releases a BSD-style advisory file lock.
-	//
-	// TODO(gvisor.dev/issue/1480): BSD-style file locking
+	// UnlockBSD releases a BSD-style advisory file lock.
 	UnlockBSD(ctx context.Context, uid lock.UniqueID) error
 
 	// LockPOSIX tries to acquire a POSIX-style advisory file lock.
@@ -730,4 +730,27 @@ func (fd *FileDescription) InodeID() uint64 {
 // Msync implements memmap.MappingIdentity.Msync.
 func (fd *FileDescription) Msync(ctx context.Context, mr memmap.MappableRange) error {
 	return fd.Sync(ctx)
+}
+
+// LockBSD tries to acquire a BSD-style advisory file lock.
+func (fd *FileDescription) LockBSD(ctx context.Context, lockType lock.LockType, blocker lock.Blocker) error {
+	// Use the FileDescriptor as lock unique ID. From flock(2) man page:
+	// Locks created by flock() are associated with an open file table entry.
+	// This means that duplicate file descriptors (created by, for example,
+	// fork(2) or dup(2)) refer to the same lock, and this lock may be modified
+	// or released using any of these descriptors. Furthermore, the lock is
+	// released either by an explicit LOCK_UN operation on any of these duplicate
+	// descriptors, or when all such descriptors have been closed.
+	//
+	// If a process uses open(2) (or similar) to obtain more than one descriptor
+	// for the same file, these descriptors are treated independently by flock().
+	// An attempt to lock the file using one of these file descriptors may be
+	// denied by a lock that the calling process has already placed via another
+	// descriptor.
+	return fd.impl.LockBSD(ctx, fd, lockType, blocker)
+}
+
+// UnlockBSD releases a BSD-style advisory file lock.
+func (fd *FileDescription) UnlockBSD(ctx context.Context) error {
+	return fd.impl.UnlockBSD(ctx, fd)
 }

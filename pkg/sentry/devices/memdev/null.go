@@ -19,17 +19,21 @@ import (
 
 	"gvisor.dev/gvisor/pkg/context"
 	"gvisor.dev/gvisor/pkg/sentry/vfs"
+	"gvisor.dev/gvisor/pkg/sentry/vfs/lock"
 	"gvisor.dev/gvisor/pkg/usermem"
 )
 
 const nullDevMinor = 3
 
 // nullDevice implements vfs.Device for /dev/null.
-type nullDevice struct{}
+type nullDevice struct {
+	locks lock.FileLocks
+}
 
 // Open implements vfs.Device.Open.
-func (nullDevice) Open(ctx context.Context, mnt *vfs.Mount, vfsd *vfs.Dentry, opts vfs.OpenOptions) (*vfs.FileDescription, error) {
+func (d *nullDevice) Open(ctx context.Context, mnt *vfs.Mount, vfsd *vfs.Dentry, opts vfs.OpenOptions) (*vfs.FileDescription, error) {
 	fd := &nullFD{}
+	fd.LockFD.Init(&d.locks)
 	if err := fd.vfsfd.Init(fd, opts.Flags, mnt, vfsd, &vfs.FileDescriptionOptions{
 		UseDentryMetadata: true,
 	}); err != nil {
@@ -43,6 +47,7 @@ type nullFD struct {
 	vfsfd vfs.FileDescription
 	vfs.FileDescriptionDefaultImpl
 	vfs.DentryMetadataFileDescriptionImpl
+	vfs.LockFD
 }
 
 // Release implements vfs.FileDescriptionImpl.Release.

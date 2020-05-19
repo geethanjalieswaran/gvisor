@@ -12,6 +12,7 @@ go_library(
         "//pkg/context",
         "//pkg/sentry/kernel",
         "//pkg/sentry/vfs",
+        "//pkg/sentry/vfs/lock",
         "//pkg/sync",
         "//pkg/syserror",
         "//pkg/usermem",

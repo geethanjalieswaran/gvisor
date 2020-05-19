@@ -10,6 +10,7 @@ go_library(
         "//pkg/context",
         "//pkg/sentry/kernel/time",
         "//pkg/sentry/vfs",
+        "//pkg/sentry/vfs/lock",
         "//pkg/syserror",
         "//pkg/usermem",
         "//pkg/waiter",

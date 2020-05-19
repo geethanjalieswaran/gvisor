@@ -52,6 +52,7 @@ import (
 	"gvisor.dev/gvisor/pkg/sentry/pgalloc"
 	"gvisor.dev/gvisor/pkg/sentry/socket/unix/transport"
 	"gvisor.dev/gvisor/pkg/sentry/vfs"
+	"gvisor.dev/gvisor/pkg/sentry/vfs/lock"
 	"gvisor.dev/gvisor/pkg/syserror"
 	"gvisor.dev/gvisor/pkg/unet"
 	"gvisor.dev/gvisor/pkg/usermem"
@@ -634,6 +635,8 @@ type dentry struct {
 	// If this dentry represents a synthetic named pipe, pipe is the pipe
 	// endpoint bound to this file.
 	pipe *pipe.VFSPipe
+
+	locks lock.FileLocks
 }
 
 // dentryAttrMask returns a p9.AttrMask enabling all attributes used by the
@@ -1326,6 +1329,7 @@ func (d *dentry) decLinks() {
 type fileDescription struct {
 	vfsfd vfs.FileDescription
 	vfs.FileDescriptionDefaultImpl
+	vfs.LockFD
 }
 
 func (fd *fileDescription) filesystem() *filesystem {
